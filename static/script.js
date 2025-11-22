@@ -1,5 +1,4 @@
-// API Configuration
-const API_URL = 'http://localhost:5000';
+const API_URL = window.location.origin;
 
 // Update range slider displays
 document.getElementById('assignmentSubmission').addEventListener('input', function(e) {
