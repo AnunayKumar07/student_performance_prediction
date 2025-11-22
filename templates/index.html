@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Performance Prediction System - AI Project</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Student Performance Prediction System</h1>
+            <p>AI-Powered Early Intervention Tool | Haldia Institute of Technology</p>
+            <div class="model-badge">Powered by Random Forest ML Algorithm</div>
+        </div>
+
+        <div class="content">
+            <div class="info-section">
+                <h3>📊 AI Prediction Criteria</h3>
+                <p><strong>Pass Conditions:</strong> Total Marks ≥ 200 (40%), Attendance ≥ 75%, Backlogs ≤ 2</p>
+                <p><strong>Fail Risk:</strong> Marks &lt; 200, Attendance &lt; 75%, Backlogs &gt; 2, Poor submission record</p>
+                <div class="criteria-list">
+                    <div class="criteria-item">✓ Academic Performance</div>
+                    <div class="criteria-item">✓ Attendance Record</div>
+                    <div class="criteria-item">✓ Assignment Submission</div>
+                    <div class="criteria-item">✓ Support Systems</div>
+                    <div class="criteria-item">✓ Mental Health</div>
+                    <div class="criteria-item">✓ Digital Access</div>
+                </div>
+            </div>
+
+            <form id="predictionForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="studentName">Student Name *</label>
+                        <input type="text" id="studentName" required placeholder="Enter student name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rollNumber">Roll Number *</label>
+                        <input type="text" id="rollNumber" required placeholder="e.g., 21HIT123">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="totalMarks">Total Marks (out of 500) *</label>
+                        <input type="number" id="totalMarks" min="0" max="500" required placeholder="0-500">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="attendance">Attendance (%) *</label>
+                        <input type="number" id="attendance" min="0" max="100" step="0.1" required placeholder="0-100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="backlogs">Backlogs (out of 5) *</label>
+                        <input type="number" id="backlogs" min="0" max="5" required placeholder="0-5">
+                    </div>
+
+                    <div class="form-group range-group">
+                        <label for="assignmentSubmission">Assignment Submission Rate</label>
+                        <input type="range" id="assignmentSubmission" min="0" max="100" value="75">
+                        <div class="range-value" id="assignmentValue">75%</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="internetQuality">Internet Access Quality *</label>
+                        <select id="internetQuality" required>
+                            <option value="">Select quality</option>
+                            <option value="excellent">Excellent</option>
+                            <option value="good">Good</option>
+                            <option value="average">Average</option>
+                            <option value="poor">Poor</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deviceAvailability">Device Availability *</label>
+                        <select id="deviceAvailability" required>
+                            <option value="">Select availability</option>
+                            <option value="always">Always Available</option>
+                            <option value="mostly">Mostly Available</option>
+                            <option value="sometimes">Sometimes Available</option>
+                            <option value="rarely">Rarely Available</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="familySupport">Family Support Level *</label>
+                        <select id="familySupport" required>
+                            <option value="">Select level</option>
+                            <option value="strong">Strong Support</option>
+                            <option value="moderate">Moderate Support</option>
+                            <option value="limited">Limited Support</option>
+                            <option value="none">No Support</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group range-group">
+                        <label for="stressLevel">Mental Health / Stress Level</label>
+                        <input type="range" id="stressLevel" min="0" max="10" value="5">
+                        <div class="range-value" id="stressValue">5/10</div>
+                    </div>
+
+                    <div class="form-group range-group">
+                        <label for="studyHours">Daily Study Hours</label>
+                        <input type="range" id="studyHours" min="0" max="12" value="4">
+                        <div class="range-value" id="studyValue">4 hrs</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="participation">Class Participation *</label>
+                        <select id="participation" required>
+                            <option value="">Select level</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="btn-container">
+                    <button type="submit" class="btn-predict">🤖 AI Predict Performance</button>
+                    <button type="button" class="btn-reset" onclick="resetForm()">🔄 Reset Form</button>
+                </div>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>AI Model analyzing student data...</p>
+            </div>
+
+            <div class="result-container" id="results">
+                <div class="result-header">
+                    <div class="status-badge" id="statusBadge">PASS</div>
+                    <div class="risk-level" id="riskLevel">Low Risk</div>
+                    <div class="student-info" id="studentInfo"></div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Success Probability</div>
+                        <div class="metric-value" id="successProb">0%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Risk Score</div>
+                        <div class="metric-value" id="riskScore">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Academic Index</div>
+                        <div class="metric-value" id="academicIndex">0</div>
+                    </div>
+                </div>
+
+                <div class="risk-factors-section" id="riskFactorsSection">
+                    <h3>⚠️ Identified Risk Factors</h3>
+                    <div id="riskFactorsList"></div>
+                </div>
+
+                <div class="recommendations">
+                    <h3>🎯 AI-Powered Recommendations</h3>
+                    <div id="recommendationList"></div>
+                </div>
+
+                <div class="feature-importance">
+                    <h3>📈 Top 5 Influential Factors (ML Model)</h3>
+                    <div id="featureImportanceList"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>© 2025 Haldia Institute of Technology | AI Project by IT Department</p>
+            <p class="tech-stack">Tech Stack: Python Flask + Random Forest ML + HTML/CSS/JS</p>
+        </footer>
+    </div>
+
+    <script src="static/script.js"></script>
+</body>
+</html>
