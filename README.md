@@ -1,5 +1,5 @@
 # student_performance_prediction
-this is the latest repo for student performance prediction for AI Project
+Project Repo for Student Performance Prediction for AI(Project)
 
 
  ## Installation & Setup
@@ -16,3 +16,5 @@ python app.py
 
 Step 3: Open Browser
 Navigate to: http://localhost:5000
+
+## Link: https://student-performance-prediction-theta.vercel.app/
