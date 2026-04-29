@@ -6,6 +6,7 @@
     - On Localhost: window.location.origin = http://localhost:5000
 */
 const API_URL = window.location.origin;
+const HISTORY_LIMIT = 10;
 
 
 // Update slider displays
@@ -17,6 +18,9 @@ document.getElementById('stressLevel').addEventListener('input', function(e) {
 });
 document.getElementById('studyHours').addEventListener('input', function(e) {
     document.getElementById('studyValue').textContent = e.target.value + ' hrs';
+});
+document.getElementById('refreshHistory').addEventListener('click', function() {
+    loadPredictionHistory();
 });
 
 
@@ -58,6 +62,7 @@ document.getElementById('predictionForm').addEventListener('submit', async funct
 
         const result = await response.json();
         displayResults(result);
+        await loadPredictionHistory();
 
     } catch (err) {
         console.error(err);
@@ -143,6 +148,94 @@ function displayResults(result) {
 }
 
 
+// Load recent predictions saved in Supabase
+async function loadPredictionHistory() {
+    const historyStatus = document.getElementById('historyStatus');
+    const historyList = document.getElementById('historyList');
+
+    historyStatus.textContent = 'Loading Supabase history...';
+    historyList.innerHTML = '';
+
+    try {
+        const response = await fetch(`${API_URL}/api/predictions?limit=${HISTORY_LIMIT}`);
+        if (!response.ok) {
+            throw new Error('History request failed');
+        }
+
+        const payload = await response.json();
+        if (!payload.enabled) {
+            historyStatus.textContent = payload.message || 'Supabase is not configured yet.';
+            return;
+        }
+
+        if (!payload.records || payload.records.length === 0) {
+            historyStatus.textContent = 'Supabase is connected. No saved predictions yet.';
+            return;
+        }
+
+        historyStatus.textContent = `Showing latest ${payload.records.length} records from ${payload.table || payload.collection}.`;
+        payload.records.forEach(record => {
+            historyList.appendChild(createHistoryItem(record));
+        });
+    } catch (err) {
+        console.warn('Prediction history unavailable:', err);
+        historyStatus.textContent = 'Prediction history is currently unavailable.';
+    }
+}
+
+
+function createHistoryItem(record) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+
+    const main = document.createElement('div');
+    main.className = 'history-main';
+
+    const name = document.createElement('div');
+    name.className = 'history-name';
+    name.textContent = record.student?.name || 'Unknown Student';
+
+    const meta = document.createElement('div');
+    meta.className = 'history-meta';
+    const rollNumber = record.student?.roll_number || 'N/A';
+    meta.textContent = `${rollNumber} | ${formatHistoryDate(record.created_at)}`;
+
+    main.appendChild(name);
+    main.appendChild(meta);
+
+    const outcome = document.createElement('div');
+    const willPass = Boolean(record.prediction?.will_pass);
+    outcome.className = willPass ? 'history-outcome pass' : 'history-outcome fail';
+    outcome.textContent = willPass ? 'PASS' : 'AT RISK';
+
+    const details = document.createElement('div');
+    details.className = 'history-details';
+    const probability = record.prediction?.success_probability ?? 0;
+    const riskLevel = record.prediction?.risk_level || 'N/A';
+    details.textContent = `${probability}% | ${riskLevel}`;
+
+    item.appendChild(main);
+    item.appendChild(outcome);
+    item.appendChild(details);
+
+    return item;
+}
+
+
+function formatHistoryDate(value) {
+    if (!value) {
+        return 'Unknown time';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString();
+}
+
+
 // Reset form
 function resetForm() {
     document.getElementById('predictionForm').reset();
@@ -165,4 +258,6 @@ window.addEventListener('load', async () => {
     } catch (err) {
         console.warn("⚠ Backend not reachable yet.");
     }
+
+    await loadPredictionHistory();
 });

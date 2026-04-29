@@ -1,8 +1,24 @@
+import os
+from datetime import datetime, timezone
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+if load_dotenv is not None:
+    load_dotenv()
+
+try:
+    from supabase import create_client
+except ImportError:
+    create_client = None
 
 app = Flask(__name__)
 CORS(app)
@@ -12,6 +28,9 @@ CORS(app)
 # ==============================
 model = None
 scaler = None
+supabase_client = None
+supabase_init_error = None
+SUPABASE_TABLE = os.getenv('SUPABASE_TABLE', 'student_predictions')
 
 # ==============================
 # FEATURE ENCODING MAPS
@@ -90,6 +109,175 @@ def ensure_model():
 # ==============================
 # HELPERS
 # ==============================
+def get_supabase_client():
+    global supabase_client, supabase_init_error
+
+    if supabase_client is not None:
+        return supabase_client
+
+    if supabase_init_error is not None:
+        return None
+
+    if create_client is None:
+        supabase_init_error = 'supabase is not installed. Run pip install -r requirements.txt.'
+        return None
+
+    supabase_url = os.getenv('SUPABASE_URL')
+    supabase_key = (
+        os.getenv('SUPABASE_SERVICE_ROLE_KEY') or
+        os.getenv('SUPABASE_ANON_KEY') or
+        os.getenv('SUPABASE_KEY')
+    )
+
+    if not supabase_url or not supabase_key:
+        supabase_init_error = (
+            'Supabase is not configured. Set SUPABASE_URL and '
+            'SUPABASE_SERVICE_ROLE_KEY in your environment.'
+        )
+        return None
+
+    try:
+        supabase_client = create_client(supabase_url, supabase_key)
+        print(f'Supabase connected using table: {SUPABASE_TABLE}')
+        return supabase_client
+    except Exception as e:
+        supabase_init_error = str(e)
+        print('Supabase initialization failed:', e)
+        return None
+
+def get_database_status():
+    client = get_supabase_client()
+    if client is not None:
+        return {
+            'enabled': True,
+            'provider': 'supabase',
+            'table': SUPABASE_TABLE,
+            'collection': SUPABASE_TABLE,
+            'message': 'Supabase connected'
+        }
+
+    return {
+        'enabled': False,
+        'provider': 'supabase',
+        'table': SUPABASE_TABLE,
+        'collection': SUPABASE_TABLE,
+        'message': supabase_init_error or 'Supabase is not configured'
+    }
+
+def to_json_safe(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, dict):
+        return {str(key): to_json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [to_json_safe(item) for item in value]
+    return value
+
+def save_prediction_record(input_data, encoded_data, prediction_response):
+    client = get_supabase_client()
+    if client is None:
+        status = get_database_status()
+        return {
+            **status,
+            'saved': False
+        }
+
+    prediction = prediction_response['prediction']
+    record = {
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'student_name': input_data.get('student_name', 'Unknown'),
+        'roll_number': input_data.get('roll_number', 'N/A'),
+        'will_pass': bool(prediction['will_pass']),
+        'success_probability': prediction['success_probability'],
+        'risk_score': prediction['risk_score'],
+        'risk_level': prediction['risk_level'],
+        'academic_index': prediction['academic_index'],
+        'input_data': to_json_safe(input_data),
+        'encoded_features': to_json_safe(encoded_data),
+        'prediction': to_json_safe(prediction),
+        'risk_factors': to_json_safe(prediction_response['risk_factors']),
+        'recommendations': to_json_safe(prediction_response['recommendations']),
+        'feature_importance': to_json_safe(prediction_response['feature_importance']),
+        'model': {
+            'type': 'Random Forest Classifier',
+            'training_samples': len(TRAINING_DATA),
+            'features': 10
+        }
+    }
+
+    try:
+        result = client.table(SUPABASE_TABLE).insert(record).execute()
+        inserted_rows = result.data or []
+        inserted_id = inserted_rows[0].get('id') if inserted_rows else None
+        return {
+            'enabled': True,
+            'provider': 'supabase',
+            'saved': True,
+            'table': SUPABASE_TABLE,
+            'collection': SUPABASE_TABLE,
+            'record_id': inserted_id,
+            'message': 'Prediction saved to Supabase'
+        }
+    except Exception as e:
+        print('Supabase save failed:', e)
+        return {
+            'enabled': True,
+            'provider': 'supabase',
+            'saved': False,
+            'table': SUPABASE_TABLE,
+            'collection': SUPABASE_TABLE,
+            'message': 'Prediction generated, but Supabase save failed'
+        }
+
+def fetch_prediction_records(limit=10):
+    client = get_supabase_client()
+    if client is None:
+        status = get_database_status()
+        return {
+            **status,
+            'records': []
+        }
+
+    records = []
+    result = (
+        client.table(SUPABASE_TABLE)
+        .select('id, created_at, student_name, roll_number, will_pass, success_probability, risk_score, risk_level, academic_index, risk_factors, recommendations')
+        .order('created_at', desc=True)
+        .limit(limit)
+        .execute()
+    )
+
+    for row in result.data or []:
+        records.append({
+            'id': row.get('id'),
+            'created_at': to_json_safe(row.get('created_at')),
+            'student': {
+                'name': row.get('student_name', 'Unknown'),
+                'roll_number': row.get('roll_number', 'N/A')
+            },
+            'prediction': {
+                'will_pass': row.get('will_pass'),
+                'success_probability': row.get('success_probability'),
+                'risk_score': row.get('risk_score'),
+                'risk_level': row.get('risk_level'),
+                'academic_index': row.get('academic_index')
+            },
+            'risk_factors_count': len(row.get('risk_factors') or []),
+            'recommendations_count': len(row.get('recommendations') or [])
+        })
+
+    return {
+        'enabled': True,
+        'provider': 'supabase',
+        'table': SUPABASE_TABLE,
+        'collection': SUPABASE_TABLE,
+        'records': records
+    }
+
 def encode_categorical_features(data):
     encoded = data.copy()
     for feature, mapping in ENCODING_MAPS.items():
@@ -350,6 +538,8 @@ def predict():
             }
         }
 
+        response['database'] = save_prediction_record(data, encoded_data, response)
+
         return jsonify(response)
 
     except Exception as e:
@@ -370,11 +560,22 @@ def model_info():
             'n_estimators': 100,
             'training_samples': len(TRAINING_DATA),
             'features': 10,
-            'accuracy': round(acc, 2)
+            'accuracy': round(acc, 2),
+            'database': get_database_status()
         })
     except Exception as e:
         print("Error in /api/model-info:", e)
         return jsonify({'error': str(e)}), 200  # don't break UI
+
+@app.route('/api/predictions', methods=['GET'])
+def prediction_history():
+    try:
+        limit = int(request.args.get('limit', 10))
+        limit = max(1, min(limit, 50))
+        return jsonify(fetch_prediction_records(limit))
+    except Exception as e:
+        print("Error in /api/predictions:", e)
+        return jsonify({'error': str(e)}), 400
 
 # ==============================
 # LOCAL RUN (Codespaces / laptop)

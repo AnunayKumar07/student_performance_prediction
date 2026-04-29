@@ -1276,6 +1276,90 @@ button {
     color: var(--color-primary, var(--color-teal-600));
 }
 
+.history-section {
+    background: var(--color-background, var(--color-cream-50));
+    padding: var(--space-20, 20px);
+    border-radius: var(--radius-md, 10px);
+    margin-top: var(--space-24, 24px);
+    border: 1px solid var(--color-card-border, rgba(var(--color-brown-600-rgb), 0.12));
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-12, 12px);
+    margin-bottom: var(--space-12, 12px);
+}
+
+.history-header h3 {
+    font-size: var(--font-size-xl, 18px);
+}
+
+.btn-history {
+    flex: 0 0 auto;
+    width: auto;
+    padding: var(--space-8, 8px) var(--space-16, 16px);
+    background: var(--color-secondary, rgba(var(--color-gray-400-rgb), 0.15));
+    color: var(--color-text, var(--color-slate-900));
+    font-size: var(--font-size-sm, 12px);
+}
+
+.btn-history:hover {
+    background: var(--color-secondary-hover, rgba(var(--color-gray-400-rgb), 0.25));
+}
+
+.history-status {
+    color: var(--color-text-secondary, var(--color-slate-500));
+    font-size: var(--font-size-sm, 12px);
+    margin-bottom: var(--space-12, 12px);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10, 10px);
+}
+
+.history-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-12, 12px);
+    padding: var(--space-12, 12px);
+    background: var(--color-surface, white);
+    border-radius: var(--radius-base, 8px);
+    border-left: 3px solid var(--color-primary, var(--color-teal-500));
+}
+
+.history-name {
+    font-weight: var(--font-weight-semibold, 550);
+    color: var(--color-text, var(--color-slate-900));
+}
+
+.history-meta,
+.history-details {
+    color: var(--color-text-secondary, var(--color-slate-500));
+    font-size: var(--font-size-sm, 12px);
+}
+
+.history-outcome {
+    padding: var(--space-4, 4px) var(--space-10, 10px);
+    border-radius: var(--radius-sm, 6px);
+    font-size: var(--font-size-xs, 11px);
+    font-weight: var(--font-weight-semibold, 550);
+}
+
+.history-outcome.pass {
+    background: rgba(var(--color-teal-500-rgb), 0.15);
+    color: var(--color-success, var(--color-teal-600));
+}
+
+.history-outcome.fail {
+    background: rgba(var(--color-error-rgb, 192, 21, 47), 0.15);
+    color: var(--color-error, var(--color-red-500));
+}
+
 /* Mobile Portrait (480px) */
 @media (max-width: 480px) {
     body {
@@ -1341,6 +1425,20 @@ button {
     
     .criteria-list {
         grid-template-columns: 1fr;
+    }
+
+    .history-header,
+    .history-item {
+        grid-template-columns: 1fr;
+    }
+
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btn-history {
+        width: 100%;
     }
 }
 
